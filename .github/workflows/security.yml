@@ -25,6 +25,9 @@ jobs:
         run: |
           pip install bandit semgrep
           curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+      
+      - name: Create reports directory
+        run: mkdir -p reports
 
       - name: Run Bandit SAST scan
         run: |
