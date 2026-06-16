@@ -1,0 +1,26 @@
+[
+  {
+    "issue": "Use of weak MD5 hash for security. Consider usedforsecurity=False",
+    "severity": "HIGH",
+    "file": "src/app.py",
+    "line": 6,
+    "code": "5 def hash_password(password):\n6     return hashlib.md5(password.encode()).hexdigest()\n7 \n",
+    "ai_feedback": "The use of MD5 for security is dangerous because it's a weak hashing algorithm that can be easily broken by attackers, allowing them to obtain the original password. This is particularly concerning for password storage, as it can lead to unauthorized access to sensitive data and systems.\n\nHere's a secure \"After\" code fix:\n```python\nimport hashlib\nimport secrets\n\ndef hash_password(password):\n    salt = secrets.token_bytes(16)\n    return hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)\n\n```\n\nOne key lesson to remember: When storing passwords, always use a strong, slow, and adaptive hashing algorithm like PBKDF2, Argon2, or Bcrypt, which are designed to be computationally expensive and resistant to brute-force attacks."
+  },
+  {
+    "issue": "Use of exec detected.",
+    "severity": "MEDIUM",
+    "file": "src/app.py",
+    "line": 13,
+    "code": "12 def run_command(user_input):\n13     exec(user_input)\n14 \n",
+    "ai_feedback": "The use of `exec` is dangerous because it allows an attacker to inject and execute arbitrary code, potentially leading to system compromise or data breaches. This is particularly problematic when user input is involved, as it enables attackers to manipulate the executed code and exploit vulnerabilities.\n\nHere's a secure \"After\" code fix:\n```python\nimport subprocess\ndef run_command(user_input):\n    subprocess.run(user_input, shell=True)\n```\nHowever, please note that using `shell=True` can still pose security risks if `user_input` is not properly sanitized. \n\nOne key lesson to remember: never directly execute user input or external data, and instead opt for safer alternatives, such as parameterized commands or whitelisting allowed inputs."
+  },
+  {
+    "issue": "Possible SQL injection vector through string-based query construction.",
+    "severity": "MEDIUM",
+    "file": "src/app.py",
+    "line": 17,
+    "code": "16 def get_user(username):\n17     query = \"SELECT * FROM users WHERE username = '\" + username + \"'\"\n18     return query\n",
+    "ai_feedback": "This vulnerability is dangerous because an attacker could inject malicious SQL code by providing a specially crafted username, potentially allowing them to access or modify sensitive data. If exploited, this could lead to unauthorized data breaches, modification of database records, or even complete takeover of the database.\n\nHere's a secure \"After\" code fix:\n```python\nimport sqlite3\ndef get_user(username):\n    query = \"SELECT * FROM users WHERE username = ?\"\n    return sqlite3.connect(\"database.db\").cursor().execute(query, (username,))\n```\n\nOne key lesson to remember: always use parameterized queries (like the `?` placeholder) instead of directly concatenating user input into your SQL queries to prevent SQL injection attacks."
+  }
+]
