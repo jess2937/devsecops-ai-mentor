@@ -1,0 +1,46 @@
+name: Security Scanner Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install scanning tools
+        run: |
+          pip install bandit semgrep
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run Bandit SAST scan
+        run: |
+          bandit -r src/ -f json -o reports/bandit_report.json || true
+
+      - name: Run Gitleaks secret scan
+        run: |
+          gitleaks detect --source . --report-format json --report-path reports/gitleaks_report.json || true
+
+      - name: Upload scan reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: reports/
+
+      - name: Check for critical vulnerabilities
+        run: |
+          python src/check_severity.py
