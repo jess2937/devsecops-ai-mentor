@@ -23,7 +23,7 @@ jobs:
 
       - name: Install scanning tools
         run: |
-          pip install bandit semgrep google-genai
+          pip install bandit semgrep groq
           curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Create reports directory
@@ -39,7 +39,7 @@ jobs:
 
       - name: Run AI Mentor Analysis
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           python src/ai_mentor.py
 

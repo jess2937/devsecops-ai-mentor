@@ -1,10 +1,10 @@
 import json
 import os
 import time
-from google import genai
+from groq import Groq
 
-# Configure Gemini API
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# Configure Groq client
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def load_bandit_report():
     report_path = "reports/bandit_report.json"
@@ -33,11 +33,14 @@ Please provide:
 
 Keep it beginner-friendly and practical.
 """
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-lite",
-        contents=prompt
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=500
     )
-    return response.text
+    return response.choices[0].message.content
 
 def analyze_vulnerabilities():
     issues = load_bandit_report()
@@ -51,16 +54,13 @@ def analyze_vulnerabilities():
     for i, issue in enumerate(issues):
         print(f"\n🔍 Analyzing: {issue.get('issue_text')}")
         
-        # Add delay to avoid rate limits
         if i > 0:
-            time.sleep(5)
+            time.sleep(2)
         
         try:
             ai_feedback = get_ai_fix(issue)
         except Exception as e:
-            import traceback
-            print(f"⚠️ AI analysis failed: {type(e).__name__}: {e}")
-            traceback.print_exc()
+            print(f"⚠️ AI analysis failed: {e}")
             ai_feedback = "AI analysis unavailable for this issue."
         
         result = {
@@ -74,7 +74,6 @@ def analyze_vulnerabilities():
         results.append(result)
         print(f"✅ AI feedback generated for issue at line {issue.get('line_number')}")
     
-    # Save enriched results
     with open("reports/ai_report.json", "w") as f:
         json.dump(results, f, indent=2)
     
