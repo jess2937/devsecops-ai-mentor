@@ -58,7 +58,9 @@ def analyze_vulnerabilities():
         try:
             ai_feedback = get_ai_fix(issue)
         except Exception as e:
-            print(f"⚠️ AI analysis failed for this issue: {e}")
+            import traceback
+            print(f"⚠️ AI analysis failed: {type(e).__name__}: {e}")
+            traceback.print_exc()
             ai_feedback = "AI analysis unavailable for this issue."
         
         result = {
