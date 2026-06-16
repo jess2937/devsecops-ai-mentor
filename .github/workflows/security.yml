@@ -23,7 +23,7 @@ jobs:
 
       - name: Install scanning tools
         run: |
-          pip install bandit semgrep google-generativeai
+          pip install bandit semgrep google-genai
           curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Create reports directory

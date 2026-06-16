@@ -1,10 +1,10 @@
 import json
 import os
-import google.generativeai as genai
+import time
+from google import genai
 
 # Configure Gemini API
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 def load_bandit_report():
     report_path = "reports/bandit_report.json"
@@ -33,7 +33,10 @@ Please provide:
 
 Keep it beginner-friendly and practical.
 """
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt
+    )
     return response.text
 
 def analyze_vulnerabilities():
@@ -45,9 +48,18 @@ def analyze_vulnerabilities():
     
     results = []
     
-    for issue in issues:
+    for i, issue in enumerate(issues):
         print(f"\n🔍 Analyzing: {issue.get('issue_text')}")
-        ai_feedback = get_ai_fix(issue)
+        
+        # Add delay to avoid rate limits
+        if i > 0:
+            time.sleep(5)
+        
+        try:
+            ai_feedback = get_ai_fix(issue)
+        except Exception as e:
+            print(f"⚠️ AI analysis failed for this issue: {e}")
+            ai_feedback = "AI analysis unavailable for this issue."
         
         result = {
             "issue": issue.get("issue_text"),
