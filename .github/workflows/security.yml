@@ -23,9 +23,9 @@ jobs:
 
       - name: Install scanning tools
         run: |
-          pip install bandit semgrep
+          pip install bandit semgrep google-generativeai
           curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
-      
+
       - name: Create reports directory
         run: mkdir -p reports
 
@@ -36,6 +36,12 @@ jobs:
       - name: Run Gitleaks secret scan
         run: |
           gitleaks detect --source . --report-format json --report-path reports/gitleaks_report.json || true
+
+      - name: Run AI Mentor Analysis
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python src/ai_mentor.py
 
       - name: Upload scan reports
         uses: actions/upload-artifact@v4
