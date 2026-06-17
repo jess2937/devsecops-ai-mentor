@@ -272,7 +272,7 @@ st.markdown("""
     }
 
     .auth-card {
-        max-width: 520px;
+        max-width: 420px;
         margin: 3rem auto;
         background: #071107;
         border: 1px solid #123312;
@@ -299,67 +299,73 @@ st.markdown("""
 # AUTH SCREENS
 # =========================
 def show_signup():
-    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-    st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
-    st.markdown('<p class="muted">Create a secure account to access your role-based dashboard.</p>', unsafe_allow_html=True)
+    left, center, right = st.columns([1.2, 1, 1.2])
 
-    with st.form("signup_form"):
-        name = st.text_input("Full name")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        confirm_password = st.text_input("Confirm password", type="password")
-        role = st.selectbox("Role", ["developer", "security_team", "admin"])
-        submitted = st.form_submit_button("Create account", use_container_width=True)
+    with center:
+        st.markdown('<div class="auth-card">', unsafe_allow_html=True)
+        st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
+        st.markdown('<p class="muted">Create a secure account to access your role-based dashboard.</p>', unsafe_allow_html=True)
 
-        if submitted:
-            if not name or not username or not password or not confirm_password:
-                st.error("All fields are required.")
-            elif len(password) < 8:
-                st.error("Password must be at least 8 characters long.")
-            elif password != confirm_password:
-                st.error("Passwords do not match.")
-            else:
-                ok, msg = create_user(name, username, password, role)
-                if ok:
-                    st.success(msg)
-                    st.session_state.page = "signin"
-                    st.rerun()
+        with st.form("signup_form"):
+            name = st.text_input("Full name", placeholder="Enter your full name")
+            username = st.text_input("Username", placeholder="Choose a username")
+            password = st.text_input("Password", type="password", placeholder="Create a password")
+            confirm_password = st.text_input("Confirm password", type="password", placeholder="Re-enter password")
+            role = st.selectbox("Role", ["developer", "security_team", "admin"])
+            submitted = st.form_submit_button("Create account", use_container_width=True)
+
+            if submitted:
+                if not name or not username or not password or not confirm_password:
+                    st.error("All fields are required.")
+                elif len(password) < 8:
+                    st.error("Password must be at least 8 characters long.")
+                elif password != confirm_password:
+                    st.error("Passwords do not match.")
                 else:
-                    st.error(msg)
+                    ok, msg = create_user(name, username, password, role)
+                    if ok:
+                        st.success(msg)
+                        st.session_state.page = "signin"
+                        st.rerun()
+                    else:
+                        st.error(msg)
 
-    if st.button("Already have an account? Sign in", use_container_width=True):
-        st.session_state.page = "signin"
-        st.rerun()
+        if st.button("Already have an account? Sign in", use_container_width=True):
+            st.session_state.page = "signin"
+            st.rerun()
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def show_signin():
-    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-    st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
-    st.markdown('<p class="muted">Sign in to continue to your secured DevSecOps workspace.</p>', unsafe_allow_html=True)
+    left, center, right = st.columns([1.2, 1, 1.2])
 
-    with st.form("signin_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Sign in", use_container_width=True)
+    with center:
+        st.markdown('<div class="auth-card">', unsafe_allow_html=True)
+        st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
+        st.markdown('<p class="muted">Sign in to continue to your secured DevSecOps workspace.</p>', unsafe_allow_html=True)
 
-        if submitted:
-            ok, user = authenticate_user(username, password)
-            if ok:
-                st.session_state.authenticated = True
-                st.session_state.username = user["username"]
-                st.session_state.name = user["name"]
-                st.session_state.role = user["role"]
-                st.success("Login successful.")
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+        with st.form("signin_form"):
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submitted = st.form_submit_button("Sign in", use_container_width=True)
 
-    if st.button("New user? Create account", use_container_width=True):
-        st.session_state.page = "signup"
-        st.rerun()
+            if submitted:
+                ok, user = authenticate_user(username, password)
+                if ok:
+                    st.session_state.authenticated = True
+                    st.session_state.username = user["username"]
+                    st.session_state.name = user["name"]
+                    st.session_state.role = user["role"]
+                    st.success("Login successful.")
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        if st.button("New user? Create account", use_container_width=True):
+            st.session_state.page = "signup"
+            st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
 # ROLE PANELS
