@@ -328,6 +328,32 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    /* Responsive fixes */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2.5rem !important;
+        letter-spacing: -1px !important;
+    }
+    .navbar {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    .nav-links {
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .metric-card {
+        margin-bottom: 0.5rem;
+    }
+    .grade-letter {
+        font-size: 4rem;
+    }
+    .block-container {
+        padding: 1rem !important;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -399,8 +425,7 @@ st.markdown("""
         <a href="#reports" style="color:#888; text-decoration:none;">Reports</a>
         <a href="#docs" style="color:#888; text-decoration:none;">Docs</a>
     </div>
-    <div class="nav-badge">LIVE SCAN</div>
-</div>
+    <a href="/" style="text-decoration:none;"><div class="nav-badge">⟳ LIVE SCAN</div></a></div>
 
 <div id="dashboard"></div>
 """, unsafe_allow_html=True)
