@@ -1,12 +1,15 @@
 import streamlit as st
 import json
 import os
+import hashlib
+import secrets
+import time
+from datetime import datetime
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
 
 # =========================
-# PAGE CONFIG
+# CONFIG
 # =========================
 st.set_page_config(
     page_title="VexilGuard",
@@ -14,935 +17,587 @@ st.set_page_config(
     layout="wide"
 )
 
+USERS_FILE = "users.json"
+REPORT_FILE = "reports/ai_report.json"
+
 # =========================
 # SESSION STATE
 # =========================
-def init_session_state():
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-    if "user_role" not in st.session_state:
-        st.session_state.user_role = "developer"
-    if "completed_steps" not in st.session_state:
-        st.session_state.completed_steps = {}
-    if "demo_issues" not in st.session_state:
-        st.session_state.demo_issues = []
+def init_session():
+    defaults = {
+        "authenticated": False,
+        "username": None,
+        "name": None,
+        "role": None,
+        "page": "signin",
+        "demo_issues": [],
+        "scan_status": None,
+        "scan_time": None,
+        "completed_steps": {}
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
+init_session()
 
 # =========================
-# CACHED HELPERS
+# SECURITY HELPERS
 # =========================
-@st.cache_data(ttl=300)
-def load_report(report_path):
-    if not os.path.exists(report_path):
-        return None
-    with open(report_path, "r") as f:
+def ensure_users_file():
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as f:
+            json.dump([], f, indent=2)
+
+def load_users():
+    ensure_users_file()
+    with open(USERS_FILE, "r") as f:
         return json.load(f)
 
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=2)
+
+def hash_password(password, salt=None):
+    salt = salt or secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        100000
+    ).hex()
+    return salt, hashed
+
+def verify_password(password, salt, stored_hash):
+    _, new_hash = hash_password(password, salt)
+    return secrets.compare_digest(new_hash, stored_hash)
+
+def username_exists(username):
+    users = load_users()
+    return any(u["username"].lower() == username.lower() for u in users)
+
+def create_user(name, username, password, role):
+    users = load_users()
+    if username_exists(username):
+        return False, "Username already exists."
+
+    salt, password_hash = hash_password(password)
+    users.append({
+        "name": name,
+        "username": username,
+        "password_salt": salt,
+        "password_hash": password_hash,
+        "role": role,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    save_users(users)
+    return True, "Account created successfully."
+
+def authenticate_user(username, password):
+    users = load_users()
+    for user in users:
+        if user["username"].lower() == username.lower():
+            if verify_password(password, user["password_salt"], user["password_hash"]):
+                return True, user
+    return False, None
+
+# =========================
+# DATA HELPERS
+# =========================
+@st.cache_data(ttl=300)
+def load_report():
+    if os.path.exists(REPORT_FILE):
+        with open(REPORT_FILE, "r") as f:
+            return json.load(f)
+    return []
 
 @st.cache_data(ttl=300)
-def calculate_metrics(issues):
+def metrics_from_issues(issues):
+    total = len(issues)
+    high = len([i for i in issues if i.get("severity") == "HIGH"])
+    medium = len([i for i in issues if i.get("severity") == "MEDIUM"])
+    low = len([i for i in issues if i.get("severity") == "LOW"])
+    return total, high, medium, low
+
+def get_demo_issues():
+    return [
+        {
+            "issue": "Hardcoded API Key",
+            "severity": "HIGH",
+            "file": "src/config.py",
+            "line": 15,
+            "code": 'API_KEY = "sk-1234567890abcdef"',
+            "ai_feedback": "Move the API key into an environment variable and load it securely from os.environ."
+        },
+        {
+            "issue": "SQL Injection",
+            "severity": "HIGH",
+            "file": "src/db.py",
+            "line": 42,
+            "code": 'cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")',
+            "ai_feedback": "Use parameterized queries instead of string interpolation."
+        },
+        {
+            "issue": "Weak Hashing",
+            "severity": "MEDIUM",
+            "file": "src/auth.py",
+            "line": 28,
+            "code": "password_hash = hashlib.md5(password.encode()).hexdigest()",
+            "ai_feedback": "Replace MD5 with a slow password hashing function such as bcrypt, Argon2, or PBKDF2."
+        },
+        {
+            "issue": "Open Redirect",
+            "severity": "LOW",
+            "file": "src/views.py",
+            "line": 67,
+            "code": "return redirect(user_input)",
+            "ai_feedback": "Validate the redirect target against an allowlist before redirecting."
+        }
+    ]
+
+def run_live_scan():
+    st.session_state.scan_status = "running"
+    st.session_state.scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    time.sleep(1)
+    issues = load_report()
     if not issues:
-        return {"total": 0, "high": 0, "medium": 0, "low": 0}
+        issues = get_demo_issues()
+        st.session_state.demo_issues = issues
+    st.session_state.scan_status = "complete"
 
-    return {
-        "total": len(issues),
-        "high": len([i for i in issues if i.get("severity") == "HIGH"]),
-        "medium": len([i for i in issues if i.get("severity") == "MEDIUM"]),
-        "low": len([i for i in issues if i.get("severity") == "LOW"]),
-    }
-
-
-@st.cache_data(ttl=300)
-def get_severity_distribution(issues):
-    if not issues:
-        return {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
-
-    dist = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
-    for issue in issues:
-        sev = issue.get("severity", "LOW")
-        if sev in dist:
-            dist[sev] += 1
-    return dist
-
-
-@st.cache_data(ttl=300)
-def get_issue_types(issues):
-    if not issues:
-        return {}
-
-    types = {}
-    for issue in issues:
-        name = issue.get("issue", "Unknown")
-        types[name] = types.get(name, 0) + 1
-    return types
-
-
-def export_to_csv(issues):
-    if not issues:
-        return None
-    df = pd.DataFrame(issues)
-    return df.to_csv(index=False)
-
-
-def export_to_json(issues):
-    if not issues:
-        return None
-    return json.dumps(issues, indent=2)
-
+def get_active_issues():
+    issues = load_report()
+    if issues:
+        return issues
+    if st.session_state.demo_issues:
+        return st.session_state.demo_issues
+    return get_demo_issues()
 
 # =========================
 # THEME
 # =========================
-def apply_theme():
-    st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-        html, body, [class*="css"], .stApp, .main, section[data-testid="stSidebar"] {
-            font-family: 'Inter', sans-serif !important;
-            background-color: #030a03 !important;
-            color: #e0e0e0 !important;
-        }
+    html, body, .stApp, [class*="css"] {
+        background: #030a03 !important;
+        color: #e6e6e6 !important;
+        font-family: 'Inter', sans-serif !important;
+    }
 
-        .block-container {
-            padding: 2rem 3rem !important;
-            max-width: 1400px !important;
-        }
+    .block-container {
+        max-width: 1380px !important;
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+    }
 
-        .main::before {
-            content: '🛡';
-            position: fixed;
-            top: 50%;
-            right: -5%;
-            transform: translateY(-50%);
-            font-size: 38rem;
-            opacity: 0.015;
-            z-index: 0;
-            pointer-events: none;
-            filter: blur(2px);
-        }
+    .brand {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #00ff41;
+        letter-spacing: -1px;
+    }
 
-        p, span, div, h1, h2, h3, h4, h5, h6, label {
-            color: inherit !important;
-        }
+    .muted {
+        color: #8b8b8b;
+        font-size: 0.95rem;
+    }
 
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.2rem 0;
-            border-bottom: 1px solid #0d2b0d;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
+    .glass {
+        background: #071107;
+        border: 1px solid #123312;
+        border-radius: 16px;
+        padding: 1.2rem;
+    }
 
-        .nav-logo {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #00ff41 !important;
-        }
+    .hero {
+        background: linear-gradient(135deg, #071107 0%, #041004 100%);
+        border: 1px solid #123312;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 1rem;
+    }
 
-        .nav-logo span { color: #ffffff !important; }
+    .metric {
+        background: #071107;
+        border: 1px solid #123312;
+        border-radius: 14px;
+        padding: 1rem;
+        text-align: center;
+    }
 
-        .nav-links {
-            display: flex;
-            gap: 1.5rem;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            flex-wrap: wrap;
-        }
+    .metric-num {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+    }
 
-        .nav-links a {
-            color: #888 !important;
-            text-decoration: none !important;
-        }
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
 
-        .nav-links a:hover {
-            color: #00ff41 !important;
-        }
+    .high { background: rgba(255,68,68,0.15); color: #ff6767; }
+    .medium { background: rgba(255,165,0,0.15); color: #ffb347; }
+    .low { background: rgba(0,255,65,0.12); color: #00ff41; }
 
-        .nav-badge {
-            background: #00ff41;
-            color: #000 !important;
-            padding: 0.4rem 1rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
+    .section-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin-top: 1rem;
+        margin-bottom: 0.8rem;
+    }
 
-        .hero-tag {
-            display: inline-block;
-            border: 1px solid #00ff41;
-            color: #00ff41 !important;
-            padding: 0.3rem 1rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 1rem;
-        }
+    .issue-card {
+        background: #071107;
+        border: 1px solid #123312;
+        border-radius: 14px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
 
-        .hero-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 4rem;
-            font-weight: 800;
-            line-height: 1.05;
-            color: #ffffff !important;
-            margin-bottom: 1rem;
-            letter-spacing: -2px;
-        }
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
 
-        .hero-title .accent {
-            color: #00ff41 !important;
-        }
+    .auth-card {
+        max-width: 520px;
+        margin: 3rem auto;
+        background: #071107;
+        border: 1px solid #123312;
+        border-radius: 18px;
+        padding: 2rem;
+    }
 
-        .hero-desc {
-            font-size: 1.05rem;
-            color: #777 !important;
-            max-width: 650px;
-            line-height: 1.7;
-            margin-bottom: 1.5rem;
-        }
+    .role-chip {
+        background: rgba(0,255,65,0.1);
+        color: #00ff41;
+        border: 1px solid rgba(0,255,65,0.2);
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: inline-block;
+    }
 
-        .status-blocked {
-            background: linear-gradient(90deg, rgba(255,40,40,0.15), transparent);
-            border-left: 3px solid #ff2828;
-            border-radius: 0 8px 8px 0;
-            padding: 1rem 1.5rem;
-            color: #ff6b6b !important;
-            font-weight: 600;
-            margin: 1rem 0;
-        }
-
-        .status-passed {
-            background: linear-gradient(90deg, rgba(0,255,65,0.12), transparent);
-            border-left: 3px solid #00ff41;
-            border-radius: 0 8px 8px 0;
-            padding: 1rem 1.5rem;
-            color: #00ff41 !important;
-            font-weight: 600;
-            margin: 1rem 0;
-        }
-
-        .grade-wrapper, .metric-card, .vuln-card, .remediation-card, .chart-card {
-            background: #050f05;
-            border: 1px solid #0d2b0d;
-            border-radius: 12px;
-        }
-
-        .grade-wrapper {
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .grade-letter {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 5.5rem;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .grade-score {
-            font-size: 0.85rem;
-            color: #888 !important;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-top: 0.5rem;
-        }
-
-        .metric-card {
-            padding: 1.5rem;
-            text-align: center;
-        }
-
-        .metric-number {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 2.4rem;
-            font-weight: 700;
-            margin-top: 0.3rem;
-        }
-
-        .metric-label {
-            font-size: 0.75rem;
-            color: #555 !important;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .section-tag {
-            font-size: 0.7rem;
-            color: #00ff41 !important;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            margin-bottom: 0.4rem;
-        }
-
-        .section-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 2rem;
-            font-weight: 700;
-            color: #ffffff !important;
-            margin-bottom: 1rem;
-        }
-
-        .vuln-card {
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .vuln-card-high { border-left: 3px solid #ff4444; }
-        .vuln-card-medium { border-left: 3px solid #ffa500; }
-        .vuln-card-low { border-left: 3px solid #00ff41; }
-
-        .vuln-card-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #fff !important;
-            margin-bottom: 0.3rem;
-        }
-
-        .vuln-card-meta {
-            font-size: 0.8rem;
-            color: #555 !important;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.7rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .badge-high { background: rgba(255,40,40,0.15); color: #ff4444 !important; border: 1px solid rgba(255,40,40,0.3); }
-        .badge-medium { background: rgba(255,165,0,0.15); color: #ffa500 !important; border: 1px solid rgba(255,165,0,0.3); }
-        .badge-low { background: rgba(0,255,65,0.10); color: #00ff41 !important; border: 1px solid rgba(0,255,65,0.2); }
-
-        .ai-feedback-box {
-            background: #030a03;
-            border: 1px solid #0d2b0d;
-            border-radius: 8px;
-            padding: 1rem;
-            font-size: 0.9rem;
-            color: #aaa !important;
-            line-height: 1.7;
-            min-height: 160px;
-        }
-
-        .build-table-wrapper {
-            background: #050f05;
-            border: 1px solid #0d2b0d;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .build-table-header, .build-table-row {
-            display: grid;
-            grid-template-columns: 120px 1fr 80px 100px 80px;
-            gap: 1rem;
-            padding: 0.9rem 1.2rem;
-            align-items: center;
-        }
-
-        .build-table-header {
-            border-bottom: 1px solid #0d2b0d;
-        }
-
-        .build-table-header span {
-            font-size: 0.68rem;
-            color: #444 !important;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-
-        .build-table-row {
-            border-bottom: 1px solid #0a1a0a;
-        }
-
-        .build-table-row:last-child {
-            border-bottom: none;
-        }
-
-        .commit-hash {
-            font-family: monospace;
-            color: #00ff41 !important;
-            font-size: 0.85rem;
-            background: rgba(0,255,65,0.08);
-            padding: 0.2rem 0.6rem;
-            border-radius: 4px;
-            border: 1px solid rgba(0,255,65,0.15);
-            display: inline-block;
-        }
-
-        .build-msg { color: #ccc !important; font-size: 0.88rem; }
-        .build-time { color: #444 !important; font-size: 0.8rem; }
-        .build-count { color: #888 !important; font-size: 0.88rem; }
-
-        .badge-pass { background: rgba(0,255,65,0.12); color: #00ff41 !important; border: 1px solid rgba(0,255,65,0.2); }
-        .badge-fail { background: rgba(255,40,40,0.15); color: #ff4444 !important; border: 1px solid rgba(255,40,40,0.3); }
-
-        .footer {
-            margin-top: 4rem;
-            padding: 2rem 0;
-            border-top: 1px solid #0d2b0d;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #333 !important;
-            font-size: 0.8rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .footer-logo {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1rem;
-            font-weight: 700;
-            color: #00ff41 !important;
-        }
-
-        .login-brand-wrap {
-            text-align: center;
-            margin-top: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .login-brand-icon {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .login-brand-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 3rem;
-            font-weight: 700;
-            color: #00ff41 !important;
-            margin-bottom: 0.4rem;
-        }
-
-        .login-brand-subtitle {
-            color: #666 !important;
-            font-size: 1rem;
-        }
-
-        .login-card {
-            background: #050f05;
-            border: 1px solid #0d2b0d;
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: 0 0 30px rgba(0,255,65,0.06);
-        }
-
-        .login-heading {
-            text-align: center;
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #fff !important;
-            margin-bottom: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .hero-title { font-size: 2.4rem !important; }
-            .build-table-header, .build-table-row {
-                grid-template-columns: 90px 1fr 60px 80px;
-            }
-            .build-table-header span:last-child,
-            .build-table-row div:last-child {
-                display: none;
-            }
-            .block-container {
-                padding: 1rem !important;
-            }
-        }
-
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-    """, unsafe_allow_html=True)
-
+    #MainMenu, header, footer {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
 
 # =========================
-# LOGIN PAGE
+# AUTH SCREENS
 # =========================
-def show_login_page():
-    apply_theme()
+def show_signup():
+    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
+    st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
+    st.markdown('<p class="muted">Create a secure account to access your role-based dashboard.</p>', unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="login-brand-wrap">
-        <div class="login-brand-icon">🛡️</div>
-        <div class="login-brand-title">VexilGuard</div>
-        <div class="login-brand-subtitle">Security Intelligence Platform</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    left, center, right = st.columns([1.2, 1, 1.2])
-
-    with center:
-        st.markdown('<div class="login-card">', unsafe_allow_html=True)
-        st.markdown('<div class="login-heading">Login</div>', unsafe_allow_html=True)
-
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
+    with st.form("signup_form"):
+        name = st.text_input("Full name")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm password", type="password")
         role = st.selectbox("Role", ["developer", "security_team", "admin"])
+        submitted = st.form_submit_button("Create account", use_container_width=True)
 
-        if st.button("Login", width="stretch"):
-            if username and password:
+        if submitted:
+            if not name or not username or not password or not confirm_password:
+                st.error("All fields are required.")
+            elif len(password) < 8:
+                st.error("Password must be at least 8 characters long.")
+            elif password != confirm_password:
+                st.error("Passwords do not match.")
+            else:
+                ok, msg = create_user(name, username, password, role)
+                if ok:
+                    st.success(msg)
+                    st.session_state.page = "signin"
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+    if st.button("Already have an account? Sign in", use_container_width=True):
+        st.session_state.page = "signin"
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def show_signin():
+    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
+    st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
+    st.markdown('<p class="muted">Sign in to continue to your secured DevSecOps workspace.</p>', unsafe_allow_html=True)
+
+    with st.form("signin_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Sign in", use_container_width=True)
+
+        if submitted:
+            ok, user = authenticate_user(username, password)
+            if ok:
                 st.session_state.authenticated = True
-                st.session_state.user_role = role
+                st.session_state.username = user["username"]
+                st.session_state.name = user["name"]
+                st.session_state.role = user["role"]
+                st.success("Login successful.")
                 st.rerun()
             else:
-                st.error("Please enter username and password")
+                st.error("Invalid username or password.")
 
-        st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("New user? Create account", use_container_width=True):
+        st.session_state.page = "signup"
+        st.rerun()
 
-
-# =========================
-# CHARTS
-# =========================
-def create_severity_chart(issues):
-    dist = get_severity_distribution(issues)
-
-    df = pd.DataFrame({
-        "Severity": list(dist.keys()),
-        "Count": list(dist.values())
-    })
-
-    fig = px.pie(
-        df,
-        values="Count",
-        names="Severity",
-        color="Severity",
-        color_discrete_map={
-            "HIGH": "#ff4444",
-            "MEDIUM": "#ffa500",
-            "LOW": "#00ff41"
-        },
-        title="Severity Distribution"
-    )
-
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#e0e0e0"),
-        margin=dict(l=10, r=10, t=50, b=10)
-    )
-
-    return fig
-
-
-def create_issue_type_chart(issues):
-    issue_types = get_issue_types(issues)
-    if not issue_types:
-        return None
-
-    df = pd.DataFrame({
-        "Issue": list(issue_types.keys()),
-        "Count": list(issue_types.values())
-    }).sort_values("Count", ascending=False)
-
-    fig = px.bar(
-        df,
-        x="Issue",
-        y="Count",
-        color="Count",
-        color_continuous_scale=["#00ff41", "#ffa500", "#ff4444"],
-        title="Issue Types"
-    )
-
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#e0e0e0"),
-        margin=dict(l=10, r=10, t=50, b=10),
-        xaxis_title=None
-    )
-
-    return fig
-
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# MAIN APP
+# ROLE PANELS
 # =========================
-def main():
-    init_session_state()
+def render_developer_features(issues):
+    total, high, medium, low = metrics_from_issues(issues)
 
-    if not st.session_state.authenticated:
-        show_login_page()
-        return
-
-    apply_theme()
-
-    report_path = "reports/ai_report.json"
-    issues = load_report(report_path)
-
-    if not issues:
-        issues = st.session_state.demo_issues
-
-    with st.sidebar:
-        st.markdown("""
-        <div style="padding:1rem 0;">
-            <div style="font-family:Space Grotesk; font-size:1.3rem; font-weight:700; color:#00ff41;">🛡️ VexilGuard</div>
-            <div style="font-size:0.75rem; color:#555; letter-spacing:2px; text-transform:uppercase;">Security Intelligence</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.divider()
-
-        st.markdown(
-            '<div style="font-size:0.7rem; color:#00ff41; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">📊 Scan Metadata</div>',
-            unsafe_allow_html=True
-        )
-
-        metadata = {
-            "🕐 Scan Time": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "🔧 SAST Engine": "Bandit v1.8",
-            "🔐 Secret Scanner": "Gitleaks",
-            "🤖 AI Engine": "Groq LLaMA 3.3",
-            "📁 Target": "src/",
-            "🌿 Branch": "main",
-            "⚙️ Trigger": "git push",
-            "👤 Role": st.session_state.user_role
-        }
-
-        for key, val in metadata.items():
-            st.markdown(f"""
-            <div style="display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid #0d2b0d;">
-                <span style="color:#555; font-size:0.8rem;">{key}</span>
-                <span style="color:#ccc; font-size:0.8rem; font-family:monospace;">{val}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.divider()
-
-        st.markdown(
-            '<div style="font-size:0.7rem; color:#00ff41; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">💾 Export Reports</div>',
-            unsafe_allow_html=True
-        )
-
-        csv_data = export_to_csv(issues)
-        json_data = export_to_json(issues)
-
-        if csv_data:
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv_data,
-                file_name="security_report.csv",
-                mime="text/csv",
-                width="stretch"
-            )
-
-        if json_data:
-            st.download_button(
-                label="📥 Download JSON",
-                data=json_data,
-                file_name="security_report.json",
-                mime="application/json",
-                width="stretch"
-            )
-
-        st.divider()
-
-        st.markdown(
-            '<div style="font-size:0.7rem; color:#00ff41; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">⚙️ Pipeline Stack</div>',
-            unsafe_allow_html=True
-        )
-
-        for tool in ["GitHub Actions", "Bandit SAST", "Gitleaks", "Groq AI", "Streamlit"]:
-            st.markdown(
-                f'<div style="padding:0.4rem 0; font-size:0.85rem; color:#888;"><span style="color:#00ff41; margin-right:0.5rem;">▸</span>{tool}</div>',
-                unsafe_allow_html=True
-            )
-
-        st.divider()
-
-        if st.button("Logout", width="stretch"):
-            st.session_state.authenticated = False
-            st.rerun()
-
-        st.markdown(
-            '<div style="font-size:0.75rem; color:#333; text-align:center; margin-top:1rem;">VexilGuard v2.1.0<br>Built by Jesinda Rachel</div>',
-            unsafe_allow_html=True
-        )
-
-    st.markdown("""
-    <div class="navbar">
-        <div class="nav-logo">Vexil<span>Guard</span></div>
-        <div class="nav-links">
-            <a href="#dashboard">Dashboard</a>
-            <a href="#history">History</a>
-            <a href="#reports">Reports</a>
-            <a href="#remediation">Remediation</a>
-            <a href="#analytics">Analytics</a>
-        </div>
-        <div class="nav-badge">LIVE SCAN</div>
-    </div>
-    <div id="dashboard"></div>
-    """, unsafe_allow_html=True)
-
-    if not issues:
-        st.markdown(
-            '<div class="status-blocked">⚠️ No security report found. Push code to trigger the pipeline, or load demo data below.</div>',
-            unsafe_allow_html=True
-        )
-
-        if st.button("Load Demo Data"):
-            st.session_state.demo_issues = [
-                {
-                    "issue": "Hardcoded API Key",
-                    "severity": "HIGH",
-                    "file": "src/config.py",
-                    "line": 15,
-                    "code": 'API_KEY = "sk-test-123"',
-                    "ai_feedback": "Move this secret into an environment variable and load it with os.environ.get()."
-                },
-                {
-                    "issue": "SQL Injection",
-                    "severity": "HIGH",
-                    "file": "src/db.py",
-                    "line": 42,
-                    "code": 'cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")',
-                    "ai_feedback": "Use parameterized queries instead of string interpolation."
-                },
-                {
-                    "issue": "Weak Hashing Algorithm",
-                    "severity": "MEDIUM",
-                    "file": "src/auth.py",
-                    "line": 28,
-                    "code": 'hashed = hashlib.md5(password.encode()).hexdigest()',
-                    "ai_feedback": "Replace MD5 with bcrypt or another password-safe algorithm."
-                },
-                {
-                    "issue": "Open Redirect",
-                    "severity": "LOW",
-                    "file": "src/views.py",
-                    "line": 77,
-                    "code": 'return redirect(next_url)',
-                    "ai_feedback": "Validate redirect destinations against an allowlist."
-                }
-            ]
-            st.rerun()
-        return
-
-    metrics = calculate_metrics(issues)
-
-    col_hero, col_grade = st.columns([2, 1])
-
-    with col_hero:
-        st.markdown('<div class="hero-tag">AI-Powered Security Scanner</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hero-title">Shift Security<br><span class="accent">Left.</span></div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="hero-desc">VexilGuard scans every code push for vulnerabilities, secrets, and security misconfigurations, then guides developers with AI-powered remediation tips.</div>',
-            unsafe_allow_html=True
-        )
-
-        if metrics["high"] > 0:
-            st.markdown(
-                f'<div class="status-blocked">🚫 PIPELINE BLOCKED — {metrics["high"]} critical issue(s) found. Fix these issues before merge.</div>',
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                '<div class="status-passed">✅ PIPELINE PASSED — No critical issues found. Safe to proceed.</div>',
-                unsafe_allow_html=True
-            )
-
-    with col_grade:
-        if metrics["high"] == 0 and metrics["medium"] == 0:
-            grade, score, color, label = "A", 100, "#00ff41", "Excellent"
-        elif metrics["high"] == 0 and metrics["medium"] <= 2:
-            grade, score, color, label = "B", 75, "#7fff00", "Good"
-        elif metrics["high"] <= 1:
-            grade, score, color, label = "C", 50, "#ffa500", "Fair"
-        else:
-            grade, score, color, label = "F", 20, "#ff4444", "Needs Work"
-
-        st.markdown(f"""
-        <div class="grade-wrapper">
-            <div style="font-size:0.7rem; color:#555; text-transform:uppercase; letter-spacing:2px; margin-bottom:1rem;">Security Health Score</div>
-            <div class="grade-letter" style="color:{color}; text-shadow:0 0 40px {color}40">{grade}</div>
-            <div class="grade-score">{score}/100 · {label}</div>
-            <div style="margin-top:1.5rem; height:4px; background:#0d2b0d; border-radius:2px;">
-                <div style="height:4px; width:{score}%; background:{color}; border-radius:2px; box-shadow:0 0 10px {color}80;"></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
+    st.markdown('<div class="section-title">Developer Workspace</div>', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
-    metric_data = [
-        ("Total Issues", metrics["total"], "#00ff41"),
-        ("Critical", metrics["high"], "#ff4444"),
-        ("Medium", metrics["medium"], "#ffa500"),
-        ("Low", metrics["low"], "#00ff41"),
-    ]
-
-    for col, (label, value, color) in zip([c1, c2, c3, c4], metric_data):
+    for col, label, val, color in [
+        (c1, "Total Issues", total, "#00ff41"),
+        (c2, "High", high, "#ff6767"),
+        (c3, "Medium", medium, "#ffb347"),
+        (c4, "Low", low, "#00ff41")
+    ]:
         with col:
             st.markdown(
-                f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-number" style="color:{color}">{value}</div></div>',
+                f'<div class="metric"><div>{label}</div><div class="metric-num" style="color:{color}">{val}</div></div>',
                 unsafe_allow_html=True
             )
 
-    st.markdown("<br><br>", unsafe_allow_html=True)
-
-    st.markdown('<div id="analytics"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-tag">// analytics</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Security Analytics</div>', unsafe_allow_html=True)
-
-    chart_col1, chart_col2 = st.columns(2)
-
-    with chart_col1:
-        st.plotly_chart(create_severity_chart(issues), width="stretch")
-
-    with chart_col2:
-        issue_chart = create_issue_type_chart(issues)
-        if issue_chart is not None:
-            st.plotly_chart(issue_chart, width="stretch")
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
-
-    st.markdown('<div id="history"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-tag">// build history</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Pipeline Run Log</div>', unsafe_allow_html=True)
-
-    build_history = [
-        {"commit": "ec817e7", "message": "fix: switch to Groq API for AI analysis", "status": "BLOCKED", "issues": 3, "time": "2h ago"},
-        {"commit": "697b643", "message": "feat: add AI mentor to pipeline", "status": "BLOCKED", "issues": 3, "time": "3h ago"},
-        {"commit": "306ae31", "message": "fix: ensure reports directory exists", "status": "PASSED", "issues": 0, "time": "4h ago"},
-        {"commit": "0b53383", "message": "fix: upgrade artifact action to v4", "status": "PASSED", "issues": 0, "time": "5h ago"},
-        {"commit": "8781da1", "message": "feat: initial pipeline setup", "status": "BLOCKED", "issues": 1, "time": "6h ago"},
-    ]
-
-    st.markdown("""
-    <div class="build-table-wrapper">
-        <div class="build-table-header">
-            <span>Commit</span>
-            <span>Message</span>
-            <span>Issues</span>
-            <span>Status</span>
-            <span>Time</span>
-        </div>
-    """, unsafe_allow_html=True)
-
-    for build in build_history:
-        badge = "badge-fail" if build["status"] == "BLOCKED" else "badge-pass"
-        st.markdown(f"""
-        <div class="build-table-row">
-            <div><span class="commit-hash">{build['commit']}</span></div>
-            <div class="build-msg">{build['message']}</div>
-            <div class="build-count">{build['issues']}</div>
-            <div><span class="badge {badge}">{build['status']}</span></div>
-            <div class="build-time">{build['time']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
-
-    st.markdown('<div id="reports"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-tag">// vulnerability analysis</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">AI Fix Recommendations</div>', unsafe_allow_html=True)
-
-    for issue in issues:
-        severity = issue.get("severity", "LOW")
-
-        if severity == "HIGH":
-            icon, badge_class, card_class = "🔴", "badge-high", "vuln-card-high"
-        elif severity == "MEDIUM":
-            icon, badge_class, card_class = "🟡", "badge-medium", "vuln-card-medium"
-        else:
-            icon, badge_class, card_class = "🟢", "badge-low", "vuln-card-low"
-
-        st.markdown(f"""
-        <div class="vuln-card {card_class}">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
-                <div>
-                    <div class="vuln-card-title">{icon} {issue.get("issue")}</div>
-                    <div class="vuln-card-meta">📁 {issue.get("file")} · Line {issue.get("line")}</div>
-                </div>
-                <span class="badge {badge_class}">{severity}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        code_col, feedback_col = st.columns(2)
-
-        with code_col:
-            st.markdown("#### Vulnerable Code")
+    for idx, issue in enumerate(issues):
+        sev = issue.get("severity", "LOW").lower()
+        st.markdown('<div class="issue-card">', unsafe_allow_html=True)
+        st.markdown(
+            f"**{issue.get('issue')}**  \n`{issue.get('file')}` · Line {issue.get('line')}  \n"
+            f'<span class="badge {sev}">{issue.get("severity")}</span>',
+            unsafe_allow_html=True
+        )
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption("Vulnerable code")
             st.code(issue.get("code", ""), language="python")
+        with col2:
+            st.caption("AI mentor guidance")
+            st.write(issue.get("ai_feedback", "No feedback available."))
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        with feedback_col:
-            st.markdown("#### AI Mentor Feedback")
-            st.markdown(
-                f'<div class="ai-feedback-box">{issue.get("ai_feedback", "No feedback available.")}</div>',
-                unsafe_allow_html=True
-            )
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown('<div id="remediation"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-tag">// remediation</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Remediation Checklist</div>', unsafe_allow_html=True)
-
     steps = [
-        "Read and understand each vulnerability description",
-        "Open the affected file in your editor",
-        "Apply the AI-recommended fix",
-        "Run Bandit locally: bandit -r src/",
-        "Commit the fix with a clear message",
-        "Push to GitHub and verify the pipeline"
+        "Read each vulnerability carefully",
+        "Open the impacted file",
+        "Apply the secure fix",
+        "Run Bandit locally",
+        "Commit with a clean message",
+        "Push and rescan"
     ]
-
-    st.markdown("""
-    <div class="remediation-card" style="padding:1.5rem; margin-bottom:1rem;">
-        <div style="font-family:'Space Grotesk', sans-serif; font-size:1rem; font-weight:600; color:#fff;">🛠️ Your Fix Checklist</div>
-        <div style="font-size:0.85rem; color:#555; margin-top:0.4rem;">Track your remediation progress below.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    completed = 0
+    done = 0
     for step in steps:
-        key = f"step_{step}"
-        checked = st.checkbox(step, key=key)
+        checked = st.checkbox(step, key=f"dev_{step}")
         if checked:
-            completed += 1
+            done += 1
+    st.progress(done / len(steps))
+    st.caption(f"{done}/{len(steps)} steps completed.")
 
-    progress = completed / len(steps)
-    st.progress(progress)
+def render_security_features(issues):
+    st.markdown('<div class="section-title">Security Team Controls</div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
 
-    if completed == len(steps):
-        st.markdown(
-            '<div class="status-passed">🎉 All remediation steps completed. Push your branch and re-run the scan.</div>',
-            unsafe_allow_html=True
-        )
-    elif completed > 0:
-        st.markdown(
-            f'<div style="font-size:0.85rem; color:#666; margin-top:0.5rem;">⏳ {completed}/{len(steps)} steps completed.</div>',
-            unsafe_allow_html=True
-        )
+    triage_df = pd.DataFrame([
+        {
+            "Issue": i.get("issue"),
+            "File": i.get("file"),
+            "Severity": i.get("severity"),
+            "Assigned To": "Unassigned",
+            "Status": "Open"
+        }
+        for i in issues
+    ])
+    st.dataframe(triage_df, use_container_width=True)
+
+    selected = st.selectbox(
+        "Select issue for triage",
+        options=[f"{i.get('issue')} — {i.get('file')}" for i in issues]
+    )
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.selectbox("Override severity", ["HIGH", "MEDIUM", "LOW"], key="override_severity")
+    with col2:
+        st.selectbox("Assign reviewer", ["Unassigned", "Security Lead", "AppSec Analyst"], key="assign_reviewer")
+    with col3:
+        st.selectbox("Mark status", ["Open", "In Review", "False Positive", "Resolved"], key="mark_status")
+
+    st.button("Save triage update")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">Team Analytics</div>', unsafe_allow_html=True)
+    sev_counts = pd.DataFrame({
+        "Severity": ["HIGH", "MEDIUM", "LOW"],
+        "Count": [
+            len([i for i in issues if i.get("severity") == "HIGH"]),
+            len([i for i in issues if i.get("severity") == "MEDIUM"]),
+            len([i for i in issues if i.get("severity") == "LOW"])
+        ]
+    })
+    fig = px.bar(sev_counts, x="Severity", y="Count", color="Severity",
+                 color_discrete_map={"HIGH": "#ff6767", "MEDIUM": "#ffb347", "LOW": "#00ff41"})
+    fig.update_layout(
+        paper_bgcolor="#071107",
+        plot_bgcolor="#071107",
+        font=dict(color="#e6e6e6")
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+def render_admin_features():
+    st.markdown('<div class="section-title">Admin Controls</div>', unsafe_allow_html=True)
+    users = load_users()
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
+
+    if users:
+        df = pd.DataFrame([
+            {
+                "Name": u["name"],
+                "Username": u["username"],
+                "Role": u["role"],
+                "Created": u["created_at"]
+            } for u in users
+        ])
+        st.dataframe(df, use_container_width=True)
+
+        usernames = [u["username"] for u in users]
+        selected_user = st.selectbox("Select user", usernames)
+        new_role = st.selectbox("Change role to", ["developer", "security_team", "admin"])
+
+        if st.button("Update user role"):
+            for u in users:
+                if u["username"] == selected_user:
+                    u["role"] = new_role
+                    break
+            save_users(users)
+            st.success("User role updated.")
+            st.rerun()
     else:
-        st.markdown(
-            '<div style="font-size:0.85rem; color:#666; margin-top:0.5rem;">Start checking off steps as you fix the issues.</div>',
-            unsafe_allow_html=True
+        st.info("No users found.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">System Settings</div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
+    st.toggle("Enable live scan on push", value=True)
+    st.toggle("Enable secret scanning", value=True)
+    st.toggle("Enable AI mentor", value=True)
+    st.selectbox("Default branch", ["main", "dev", "staging"])
+    st.selectbox("Risk threshold to block pipeline", ["HIGH", "MEDIUM", "LOW"])
+    st.button("Save system settings")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">Audit Log</div>', unsafe_allow_html=True)
+    log_df = pd.DataFrame([
+        {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Event": "Admin viewed dashboard", "Actor": st.session_state.username},
+        {"Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Event": "Role management opened", "Actor": st.session_state.username},
+    ])
+    st.dataframe(log_df, use_container_width=True)
+
+# =========================
+# APP SHELL
+# =========================
+def logout():
+    for key in ["authenticated", "username", "name", "role"]:
+        st.session_state[key] = None if key != "authenticated" else False
+    st.session_state.page = "signin"
+    st.rerun()
+
+def show_app():
+    issues = get_active_issues()
+    total, high, medium, low = metrics_from_issues(issues)
+
+    with st.sidebar:
+        st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
+        st.markdown(f"**User:** {st.session_state.name}")
+        st.markdown(f"**Username:** `{st.session_state.username}`")
+        st.markdown(f'<span class="role-chip">{st.session_state.role}</span>', unsafe_allow_html=True)
+        st.divider()
+
+        if st.button("⟳ LIVE SCAN", use_container_width=True):
+            run_live_scan()
+            st.success("Scan completed.")
+            st.rerun()
+
+        st.download_button(
+            "Download issues CSV",
+            data=pd.DataFrame(issues).to_csv(index=False),
+            file_name="vexilguard_issues.csv",
+            mime="text/csv",
+            use_container_width=True
         )
 
-    st.markdown("""
-    <div class="footer">
-        <div class="footer-logo">🛡️ VexilGuard</div>
-        <div>GitHub Actions · Bandit · Gitleaks · Groq AI · Streamlit</div>
-        <div>v2.1.0 · Built by Jesinda Rachel</div>
-    </div>
-    """, unsafe_allow_html=True)
+        st.divider()
+        st.write("### Scan Metadata")
+        st.caption(f"Last scan: {st.session_state.scan_time or 'Not run in this session'}")
+        st.caption("SAST Engine: Bandit")
+        st.caption("Secret Scanner: Gitleaks")
+        st.caption("AI Engine: Groq LLaMA")
+        st.caption("Trigger: Git push / manual scan")
 
+        st.divider()
+        if st.button("Logout", use_container_width=True):
+            logout()
 
-if __name__ == "__main__":
-    main()
+    st.markdown(
+        f"""
+        <div class="topbar">
+            <div>
+                <div class="brand">VexilGuard</div>
+                <div class="muted">Role-based DevSecOps dashboard with secure authentication and live scan controls.</div>
+            </div>
+            <div class="role-chip">{st.session_state.role}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown('<div class="hero">', unsafe_allow_html=True)
+    st.markdown("## Shift Security Left")
+    st.write("Scan code, review issues, teach remediation, and manage security operations from a single dashboard.")
+    if high > 0:
+        st.error(f"Pipeline blocked: {high} high-severity issue(s) found.")
+    else:
+        st.success("Pipeline passed: no high-severity issues detected.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    render_developer_features(issues)
+
+    if st.session_state.role in ["security_team", "admin"]:
+        render_security_features(issues)
+
+    if st.session_state.role == "admin":
+        render_admin_features()
+
+# =========================
+# ROUTER
+# =========================
+if not st.session_state.authenticated:
+    if st.session_state.page == "signup":
+        show_signup()
+    else:
+        show_signin()
+else:
+    show_app()
