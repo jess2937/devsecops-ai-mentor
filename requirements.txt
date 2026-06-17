@@ -1,3 +1,5 @@
 streamlit
 groq
 bandit
+pandas
+plotly
