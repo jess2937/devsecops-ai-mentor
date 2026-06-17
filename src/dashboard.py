@@ -9,166 +9,407 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    * { font-family: 'Inter', sans-serif; }
-    
-    .hero-title {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.3rem;
-    }
-    
-    .hero-subtitle {
-        font-size: 1.1rem;
-        color: #888;
-        font-weight: 300;
-        margin-bottom: 1rem;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-    .grade-card {
-        border-radius: 20px;
-        padding: 2rem;
-        text-align: center;
-        margin: 1rem 0;
-    }
-
-    .grade-letter {
-        font-size: 5rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-
-    .grade-label {
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-top: 0.5rem;
-    }
-
-    .status-blocked {
-        background: linear-gradient(135deg, #ff416c, #ff4b2b);
-        border-radius: 16px;
-        padding: 1.2rem 2rem;
-        color: white;
-        font-weight: 600;
-        font-size: 1rem;
-        margin: 1rem 0;
-        box-shadow: 0 8px 32px rgba(255, 65, 108, 0.3);
-    }
-    
-    .status-passed {
-        background: linear-gradient(135deg, #11998e, #38ef7d);
-        border-radius: 16px;
-        padding: 1.2rem 2rem;
-        color: white;
-        font-weight: 600;
-        font-size: 1rem;
-        margin: 1rem 0;
-        box-shadow: 0 8px 32px rgba(56, 239, 125, 0.3);
-    }
-
-    .metric-card {
-        background: linear-gradient(135deg, #1a1a2e, #16213e);
-        border: 1px solid #2a2a4a;
-        border-radius: 16px;
-        padding: 1.5rem;
-        text-align: center;
-    }
-
-    .metric-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-    }
-
-    .metric-label {
-        font-size: 0.8rem;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    .section-title {
-        font-size: 1.4rem;
-        font-weight: 600;
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        background-color: #030a03 !important;
         color: #e0e0e0;
-        margin: 2rem 0 1rem 0;
     }
 
-    .history-row {
-        background: #1a1a2e;
-        border: 1px solid #2a2a4a;
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-        margin: 0.5rem 0;
+    .block-container {
+        padding: 2rem 3rem !important;
+        max-width: 1400px !important;
+    }
+
+    /* ── NAV BAR ── */
+    .navbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        padding: 1.2rem 0;
+        border-bottom: 1px solid #0d2b0d;
+        margin-bottom: 3rem;
     }
 
+    .nav-logo {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #00ff41;
+        letter-spacing: -0.5px;
+    }
+
+    .nav-logo span {
+        color: #ffffff;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.85rem;
+        color: #888;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .nav-badge {
+        background: #00ff41;
+        color: #000;
+        padding: 0.4rem 1rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+
+    /* ── HERO ── */
+    .hero-tag {
+        display: inline-block;
+        border: 1px solid #00ff41;
+        color: #00ff41;
+        padding: 0.3rem 1rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 4.5rem !important;
+        font-weight: 800 !important;
+        line-height: 1.05 !important;
+        color: #ffffff !important;
+        margin-bottom: 1rem !important;
+        letter-spacing: -2px !important;
+    }
+
+    .hero-title .accent {
+        color: #00ff41;
+    }
+
+    .hero-desc {
+        font-size: 1.1rem;
+        color: #666;
+        max-width: 600px;
+        line-height: 1.7;
+        margin-bottom: 2rem;
+    }
+
+    .hero-cta {
+        display: inline-block;
+        background: #00ff41;
+        color: #000;
+        padding: 0.8rem 2rem;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-right: 1rem;
+    }
+
+    .hero-cta-outline {
+        display: inline-block;
+        border: 1px solid #333;
+        color: #888;
+        padding: 0.8rem 2rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    /* ── STATUS ── */
+    .status-blocked {
+        background: linear-gradient(90deg, rgba(255,40,40,0.15), transparent);
+        border-left: 3px solid #ff2828;
+        border-radius: 0 8px 8px 0;
+        padding: 1rem 1.5rem;
+        color: #ff6b6b;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 1.5rem 0;
+    }
+
+    .status-passed {
+        background: linear-gradient(90deg, rgba(0,255,65,0.1), transparent);
+        border-left: 3px solid #00ff41;
+        border-radius: 0 8px 8px 0;
+        padding: 1rem 1.5rem;
+        color: #00ff41;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 1.5rem 0;
+    }
+
+    /* ── GRADE CARD ── */
+    .grade-wrapper {
+        background: #050f05;
+        border: 1px solid #0d2b0d;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .grade-wrapper::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(0,255,65,0.05) 0%, transparent 60%);
+    }
+
+    .grade-letter {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 6rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .grade-score {
+        font-size: 0.85rem;
+        color: #888;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+
+    /* ── METRIC CARDS ── */
+    .metric-card {
+        background: #050f05;
+        border: 1px solid #0d2b0d;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #00ff41, transparent);
+        opacity: 0.4;
+    }
+
+    .metric-number {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2.8rem;
+        font-weight: 700;
+        margin: 0.3rem 0;
+        line-height: 1;
+    }
+
+    .metric-label {
+        font-size: 0.75rem;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    /* ── SECTION TITLES ── */
+    .section-tag {
+        font-size: 0.7rem;
+        color: #00ff41;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 1.5rem;
+        letter-spacing: -0.5px;
+    }
+
+    /* ── BUILD HISTORY ── */
+    .build-row {
+        background: #050f05;
+        border: 1px solid #0d2b0d;
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
+        margin: 0.5rem 0;
+        display: grid;
+        grid-template-columns: 1fr 3fr 1fr 1fr;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .commit-hash {
+        font-family: monospace;
+        color: #00ff41;
+        font-size: 0.85rem;
+        background: rgba(0,255,65,0.1);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .build-msg {
+        color: #ccc;
+        font-size: 0.9rem;
+    }
+
+    .build-time {
+        color: #555;
+        font-size: 0.8rem;
+    }
+
+    /* ── BADGES ── */
     .badge {
         display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
+        padding: 0.25rem 0.7rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
     }
 
-    .badge-high { background: rgba(255,65,108,0.2); color: #ff416c; }
-    .badge-medium { background: rgba(247,151,30,0.2); color: #f7971e; }
-    .badge-low { background: rgba(17,153,142,0.2); color: #11998e; }
+    .badge-high { background: rgba(255,40,40,0.15); color: #ff4444; border: 1px solid rgba(255,40,40,0.3); }
+    .badge-medium { background: rgba(255,165,0,0.15); color: #ffa500; border: 1px solid rgba(255,165,0,0.3); }
+    .badge-low { background: rgba(0,255,65,0.1); color: #00ff41; border: 1px solid rgba(0,255,65,0.2); }
+    .badge-pass { background: rgba(0,255,65,0.1); color: #00ff41; border: 1px solid rgba(0,255,65,0.2); }
+    .badge-fail { background: rgba(255,40,40,0.15); color: #ff4444; border: 1px solid rgba(255,40,40,0.3); }
 
-    .footer {
-        text-align: center;
-        color: #444;
-        font-size: 0.8rem;
-        margin-top: 3rem;
-        padding: 1rem;
-        border-top: 1px solid #1a1a2e;
+    /* ── VULN CARDS ── */
+    .vuln-header {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 0.3rem;
     }
+
+    /* ── CHECKLIST ── */
+    .checklist-title {
+        font-size: 0.8rem;
+        color: #00ff41;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin: 1rem 0 0.5rem 0;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+        margin-top: 4rem;
+        padding: 2rem 0;
+        border-top: 1px solid #0d2b0d;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #333;
+        font-size: 0.8rem;
+    }
+
+    .footer-logo {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #00ff41;
+    }
+
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ──
+# ── SIDEBAR ──
 with st.sidebar:
-    st.markdown("## 🛡️ VexilGuard")
-    st.markdown("---")
-    st.markdown("### 📊 Scan Metadata")
-    st.markdown(f"**🕐 Scan Time:** {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    st.markdown("**🔧 Scanner Engine:** Bandit v1.8")
-    st.markdown("**🔐 Secret Scanner:** Gitleaks")
-    st.markdown("**🤖 AI Engine:** Groq LLaMA 3.3")
-    st.markdown("**📁 Target:** `src/`")
-    st.markdown("**🌿 Branch:** `main`")
-    st.markdown("---")
-    st.markdown("### ⚙️ Pipeline Tools")
-    st.markdown("✅ GitHub Actions")
-    st.markdown("✅ Bandit SAST")
-    st.markdown("✅ Gitleaks")
-    st.markdown("✅ Groq AI")
-    st.markdown("✅ Streamlit Dashboard")
-    st.markdown("---")
-    st.caption("VexilGuard v1.0.0 · Built by Jesinda Rachel")
+    st.markdown("""
+    <div style="padding: 1rem 0;">
+        <div style="font-family: Space Grotesk; font-size: 1.3rem; font-weight: 700; color: #00ff41; margin-bottom: 0.3rem;">🛡️ VexilGuard</div>
+        <div style="font-size: 0.75rem; color: #555; letter-spacing: 2px; text-transform: uppercase;">Security Intelligence</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ── Hero ──
-st.markdown('<p class="hero-title">🛡️ VexilGuard</p>', unsafe_allow_html=True)
-st.markdown('<p class="hero-subtitle">AI-Powered DevSecOps Pipeline — Scans vulnerabilities and teaches you how to fix them</p>', unsafe_allow_html=True)
-st.divider()
+    st.divider()
 
-# ── Load Report ──
+    st.markdown("""
+    <div style="font-size: 0.7rem; color: #00ff41; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;">
+        📊 Scan Metadata
+    </div>
+    """, unsafe_allow_html=True)
+
+    metadata = {
+        "🕐 Scan Time": datetime.now().strftime('%Y-%m-%d %H:%M'),
+        "🔧 SAST Engine": "Bandit v1.8",
+        "🔐 Secret Scanner": "Gitleaks",
+        "🤖 AI Engine": "Groq LLaMA 3.3",
+        "📁 Target": "src/",
+        "🌿 Branch": "main",
+        "⚙️ Trigger": "git push"
+    }
+
+    for key, val in metadata.items():
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid #0d2b0d;">
+            <span style="color: #555; font-size: 0.8rem;">{key}</span>
+            <span style="color: #ccc; font-size: 0.8rem; font-family: monospace;">{val}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+
+    st.markdown("""
+    <div style="font-size: 0.7rem; color: #00ff41; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;">
+        ⚙️ Pipeline Stack
+    </div>
+    """, unsafe_allow_html=True)
+
+    tools = ["GitHub Actions", "Bandit SAST", "Gitleaks", "Groq AI", "Streamlit"]
+    for tool in tools:
+        st.markdown(f"""
+        <div style="padding: 0.4rem 0; font-size: 0.85rem; color: #888;">
+            <span style="color: #00ff41; margin-right: 0.5rem;">▸</span>{tool}
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+    st.markdown("""
+    <div style="font-size: 0.75rem; color: #333; text-align: center;">
+        VexilGuard v1.0.0<br>Built by Jesinda Rachel
+    </div>
+    """, unsafe_allow_html=True)
+
+# ── NAVBAR ──
+st.markdown("""
+<div class="navbar">
+    <div class="nav-logo">Vexil<span>Guard</span></div>
+    <div class="nav-links">
+        <span>Dashboard</span>
+        <span>History</span>
+        <span>Reports</span>
+        <span>Docs</span>
+    </div>
+    <div class="nav-badge">LIVE SCAN</div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── LOAD REPORT ──
 report_path = "reports/ai_report.json"
 
 if not os.path.exists(report_path):
-    st.warning("⚠️ No security report found. Push code to trigger the pipeline!")
+    st.markdown("""
+    <div class="status-blocked">⚠️ No security report found. Push code to trigger the pipeline!</div>
+    """, unsafe_allow_html=True)
     st.stop()
 
 with open(report_path, "r") as f:
@@ -179,151 +420,151 @@ high = len([i for i in issues if i.get("severity") == "HIGH"])
 medium = len([i for i in issues if i.get("severity") == "MEDIUM"])
 low = len([i for i in issues if i.get("severity") == "LOW"])
 
-# ── Security Health Score ──
-st.markdown('<div class="section-title">🏆 Security Health Score</div>', unsafe_allow_html=True)
+# ── HERO SECTION ──
+col_hero, col_grade = st.columns([2, 1])
 
-if high == 0 and medium == 0:
-    grade = "A"
-    score = 100
-    color = "#38ef7d"
-    label = "Excellent — No issues found!"
-elif high == 0 and medium <= 2:
-    grade = "B"
-    score = 75
-    color = "#667eea"
-    label = "Good — Minor issues to fix"
-elif high <= 1:
-    grade = "C"
-    score = 50
-    color = "#f7971e"
-    label = "Fair — Critical issues found"
-else:
-    grade = "F"
-    score = 20
-    color = "#ff416c"
-    label = "Poor — Multiple critical issues!"
+with col_hero:
+    st.markdown('<div class="hero-tag">🛡️ AI-Powered Security Scanner</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="hero-title">Shift Security<br><span class="accent">Left.</span></div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <div class="hero-desc">
+        VexilGuard automatically scans every code push for vulnerabilities, 
+        secrets, and security misconfigurations — then teaches your team 
+        exactly how to fix them using AI.
+    </div>
+    """, unsafe_allow_html=True)
 
-col_grade, col_bar = st.columns([1, 3])
+    if high > 0:
+        st.markdown(f'<div class="status-blocked">🚫 PIPELINE BLOCKED — {high} critical issue(s) detected. Review required before merge.</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="status-passed">✅ PIPELINE PASSED — No critical vulnerabilities detected. Safe to merge!</div>', unsafe_allow_html=True)
 
 with col_grade:
-    st.markdown(f'''
-    <div class="grade-card" style="background: linear-gradient(135deg, #1a1a2e, #16213e); border: 2px solid {color};">
-        <div class="grade-letter" style="color: {color}">{grade}</div>
-        <div class="grade-label" style="color: {color}">{label}</div>
-    </div>''', unsafe_allow_html=True)
+    if high == 0 and medium == 0:
+        grade, score, color, label = "A", 100, "#00ff41", "Excellent"
+    elif high == 0 and medium <= 2:
+        grade, score, color, label = "B", 75, "#7fff00", "Good"
+    elif high <= 1:
+        grade, score, color, label = "C", 50, "#ffa500", "Fair"
+    else:
+        grade, score, color, label = "F", 20, "#ff4444", "Critical"
 
-with col_bar:
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown(f"**Security Score: {score}/100**")
-    st.progress(score / 100)
-    st.markdown(f"*{high} critical · {medium} medium · {low} low severity issues*")
-
-st.divider()
-
-# ── Status Banner ──
-if high > 0:
-    st.markdown(f'<div class="status-blocked">🚫 PIPELINE BLOCKED — {high} critical issue(s) detected. Fix before merging.</div>', unsafe_allow_html=True)
-else:
-    st.markdown('<div class="status-passed">✅ PIPELINE PASSED — No critical vulnerabilities. Safe to merge!</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="grade-wrapper">
+        <div style="font-size: 0.7rem; color: #555; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;">Security Health Score</div>
+        <div class="grade-letter" style="color: {color}; text-shadow: 0 0 40px {color}40">{grade}</div>
+        <div class="grade-score">{score}/100 · {label}</div>
+        <div style="margin-top: 1.5rem; height: 4px; background: #0d2b0d; border-radius: 2px;">
+            <div style="height: 4px; width: {score}%; background: {color}; border-radius: 2px; box-shadow: 0 0 10px {color}80;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Metric Cards ──
+# ── METRIC CARDS ──
 col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    st.markdown(f'''<div class="metric-card">
-        <div class="metric-label">Total Issues</div>
-        <div class="metric-number" style="color:#667eea">{total}</div>
-    </div>''', unsafe_allow_html=True)
-
-with col2:
-    st.markdown(f'''<div class="metric-card">
-        <div class="metric-label">🔴 Critical</div>
-        <div class="metric-number" style="color:#ff416c">{high}</div>
-    </div>''', unsafe_allow_html=True)
-
-with col3:
-    st.markdown(f'''<div class="metric-card">
-        <div class="metric-label">🟡 Medium</div>
-        <div class="metric-number" style="color:#f7971e">{medium}</div>
-    </div>''', unsafe_allow_html=True)
-
-with col4:
-    st.markdown(f'''<div class="metric-card">
-        <div class="metric-label">🟢 Low</div>
-        <div class="metric-number" style="color:#11998e">{low}</div>
-    </div>''', unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-st.divider()
-
-# ── Build History ──
-st.markdown('<div class="section-title">📜 Build History</div>', unsafe_allow_html=True)
-
-build_history = [
-    {"commit": "ec817e7", "message": "fix: switch to Groq API", "status": "🔴 Blocked", "issues": 3, "time": "2 hours ago"},
-    {"commit": "697b643", "message": "feat: add Gemini AI mentor", "status": "🔴 Blocked", "issues": 3, "time": "3 hours ago"},
-    {"commit": "306ae31", "message": "fix: ensure reports directory exists", "status": "✅ Passed", "issues": 0, "time": "4 hours ago"},
-    {"commit": "0b53383", "message": "fix: upgrade upload-artifact to v4", "status": "✅ Passed", "issues": 0, "time": "5 hours ago"},
-    {"commit": "8781da1", "message": "feat: initial project setup", "status": "🔴 Blocked", "issues": 1, "time": "6 hours ago"},
+metrics = [
+    ("Total Issues", total, "#00ff41"),
+    ("🔴 Critical", high, "#ff4444"),
+    ("🟡 Medium", medium, "#ffa500"),
+    ("🟢 Low", low, "#00ff41"),
 ]
 
+for col, (label, value, color) in zip([col1, col2, col3, col4], metrics):
+    with col:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-number" style="color:{color}">{value}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown("<br><br>", unsafe_allow_html=True)
+
+# ── BUILD HISTORY ──
+st.markdown('<div class="section-tag">// build history</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Pipeline Run Log</div>', unsafe_allow_html=True)
+
+build_history = [
+    {"commit": "ec817e7", "message": "fix: switch to Groq API for AI analysis", "status": "BLOCKED", "issues": 3, "time": "2 hours ago"},
+    {"commit": "697b643", "message": "feat: add AI mentor analysis to pipeline", "status": "BLOCKED", "issues": 3, "time": "3 hours ago"},
+    {"commit": "306ae31", "message": "fix: ensure reports directory exists", "status": "PASSED", "issues": 0, "time": "4 hours ago"},
+    {"commit": "0b53383", "message": "fix: upgrade upload-artifact to v4", "status": "PASSED", "issues": 0, "time": "5 hours ago"},
+    {"commit": "8781da1", "message": "feat: initial project setup with pipeline", "status": "BLOCKED", "issues": 1, "time": "6 hours ago"},
+]
+
+# Header row
+col1, col2, col3, col4, col5 = st.columns([1, 3, 1, 1, 1])
+for col, header in zip([col1, col2, col3, col4, col5], ["Commit", "Message", "Issues", "Status", "Time"]):
+    with col:
+        st.markdown(f"<div style='font-size:0.7rem; color:#555; text-transform:uppercase; letter-spacing:1px;'>{header}</div>", unsafe_allow_html=True)
+
 for build in build_history:
-    col1, col2, col3, col4 = st.columns([1, 3, 1, 1])
+    col1, col2, col3, col4, col5 = st.columns([1, 3, 1, 1, 1])
     with col1:
-        st.code(build["commit"], language="text")
+        st.markdown(f'<span class="commit-hash">{build["commit"]}</span>', unsafe_allow_html=True)
     with col2:
-        st.markdown(f"**{build['message']}**")
-        st.caption(build["time"])
+        st.markdown(f'<span class="build-msg">{build["message"]}</span>', unsafe_allow_html=True)
     with col3:
-        st.markdown(f"**Issues:** {build['issues']}")
+        st.markdown(f'<span style="color:#888; font-size:0.9rem;">{build["issues"]}</span>', unsafe_allow_html=True)
     with col4:
-        st.markdown(build["status"])
+        badge = "badge-fail" if build["status"] == "BLOCKED" else "badge-pass"
+        st.markdown(f'<span class="badge {badge}">{build["status"]}</span>', unsafe_allow_html=True)
+    with col5:
+        st.markdown(f'<span class="build-time">{build["time"]}</span>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<br><br>", unsafe_allow_html=True)
 
-# ── Vulnerability Details ──
-st.markdown('<div class="section-title">📋 Vulnerability Analysis & AI Fix Recommendations</div>', unsafe_allow_html=True)
+# ── VULNERABILITY DETAILS ──
+st.markdown('<div class="section-tag">// vulnerability analysis</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">AI Fix Recommendations</div>', unsafe_allow_html=True)
 
 for idx, issue in enumerate(issues):
     severity = issue.get("severity", "UNKNOWN")
 
     if severity == "HIGH":
-        icon = "🔴"
-        badge_class = "badge-high"
+        icon, badge_class, border_color = "🔴", "badge-high", "#ff444440"
     elif severity == "MEDIUM":
-        icon = "🟡"
-        badge_class = "badge-medium"
+        icon, badge_class, border_color = "🟡", "badge-medium", "#ffa50040"
     else:
-        icon = "🟢"
-        badge_class = "badge-low"
+        icon, badge_class, border_color = "🟢", "badge-low", "#00ff4140"
 
-    with st.expander(f"{icon} [{severity}] {issue.get('issue')} — Line {issue.get('line')}"):
+    with st.expander(f"{icon} {issue.get('issue')} — Line {issue.get('line')}"):
+
+        st.markdown(f'<span class="badge {badge_class}">{severity}</span>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+
         col1, col2 = st.columns([1, 1])
 
         with col1:
-            st.markdown(f'<span class="badge {badge_class}">{severity}</span>', unsafe_allow_html=True)
-            st.markdown("**📁 File**")
+            st.markdown('<div style="font-size:0.7rem; color:#00ff41; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.5rem;">📁 File Location</div>', unsafe_allow_html=True)
             st.code(issue.get("file"), language="text")
-            st.markdown("**❌ Vulnerable Code**")
+
+            st.markdown('<div style="font-size:0.7rem; color:#ff4444; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.5rem;">❌ Vulnerable Code</div>', unsafe_allow_html=True)
             st.code(issue.get("code"), language="python")
 
         with col2:
-            st.markdown("**🤖 AI Mentor Recommendation**")
-            st.info(issue.get("ai_feedback", "No feedback available."))
+            st.markdown('<div style="font-size:0.7rem; color:#00ff41; text-transform:uppercase; letter-spacing:2px; margin-bottom:0.5rem;">🤖 AI Mentor Says</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="background: #050f05; border: 1px solid #0d2b0d; border-radius: 8px; padding: 1rem; font-size: 0.9rem; color: #ccc; line-height: 1.7;">
+                {issue.get("ai_feedback", "No feedback available.")}
+            </div>
+            """, unsafe_allow_html=True)
 
-        # ── Remediation Checklist ──
-        st.markdown("---")
-        st.markdown("**✅ Developer Remediation Checklist**")
+        # ── REMEDIATION CHECKLIST ──
+        st.markdown('<div class="checklist-title">✅ Developer Remediation Checklist</div>', unsafe_allow_html=True)
 
         steps = [
-            "Read and understand the vulnerability description above",
+            "Read and understand the vulnerability description",
             "Review the vulnerable code in your editor",
-            "Apply the AI recommended fix",
-            "Run the scanner locally to verify the fix",
-            "Commit the fix with a descriptive message",
-            "Push and confirm pipeline passes"
+            "Apply the AI recommended secure fix",
+            "Run the scanner locally to verify",
+            "Commit fix with a descriptive message",
+            "Push and confirm pipeline passes ✅"
         ]
 
         completed = 0
@@ -335,11 +576,17 @@ for idx, issue in enumerate(issues):
         st.progress(progress)
 
         if completed == len(steps):
-            st.success("🎉 All steps completed! You're ready to push your fix.")
+            st.markdown('<div class="status-passed">🎉 All steps done! Ready to push your fix.</div>', unsafe_allow_html=True)
         elif completed > 0:
-            st.info(f"⏳ {completed}/{len(steps)} steps completed. Keep going!")
+            st.markdown(f'<div style="font-size:0.85rem; color:#555;">⏳ {completed}/{len(steps)} steps completed</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<br><br>", unsafe_allow_html=True)
 
-# ── Footer ──
-st.markdown('<div class="footer">🛡️ VexilGuard v1.0.0 · Built with GitHub Actions • Bandit • Gitleaks • Groq AI • Streamlit</div>', unsafe_allow_html=True)
+# ── FOOTER ──
+st.markdown("""
+<div class="footer">
+    <div class="footer-logo">🛡️ VexilGuard</div>
+    <div>GitHub Actions · Bandit · Gitleaks · Groq AI · Streamlit</div>
+    <div>v1.0.0 · Built by Jesinda Rachel</div>
+</div>
+""", unsafe_allow_html=True)
