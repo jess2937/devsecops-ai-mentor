@@ -394,13 +394,15 @@ st.markdown("""
 <div class="navbar">
     <div class="nav-logo">Vexil<span>Guard</span></div>
     <div class="nav-links">
-        <span>Dashboard</span>
-        <span>History</span>
-        <span>Reports</span>
-        <span>Docs</span>
+        <a href="#dashboard" style="color:#888; text-decoration:none;">Dashboard</a>
+        <a href="#history" style="color:#888; text-decoration:none;">History</a>
+        <a href="#reports" style="color:#888; text-decoration:none;">Reports</a>
+        <a href="#docs" style="color:#888; text-decoration:none;">Docs</a>
     </div>
     <div class="nav-badge">LIVE SCAN</div>
 </div>
+
+<div id="dashboard"></div>
 """, unsafe_allow_html=True)
 
 # ── LOAD REPORT ──
@@ -487,8 +489,7 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 
 # ── BUILD HISTORY ──
 st.markdown('<div class="section-tag">// build history</div>', unsafe_allow_html=True)
-st.markdown('<div class="section-title">Pipeline Run Log</div>', unsafe_allow_html=True)
-
+st.markdown('<div id="history"></div><div class="section-title">Pipeline Run Log</div>', unsafe_allow_html=True)
 build_history = [
     {"commit": "ec817e7", "message": "fix: switch to Groq API for AI analysis", "status": "BLOCKED", "issues": 3, "time": "2 hours ago"},
     {"commit": "697b643", "message": "feat: add AI mentor analysis to pipeline", "status": "BLOCKED", "issues": 3, "time": "3 hours ago"},
@@ -521,7 +522,7 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 
 # ── VULNERABILITY DETAILS ──
 st.markdown('<div class="section-tag">// vulnerability analysis</div>', unsafe_allow_html=True)
-st.markdown('<div class="section-title">AI Fix Recommendations</div>', unsafe_allow_html=True)
+st.markdown('<div id="reports"></div><div class="section-title">AI Fix Recommendations</div>', unsafe_allow_html=True)
 
 for idx, issue in enumerate(issues):
     severity = issue.get("severity", "UNKNOWN")
@@ -580,7 +581,7 @@ for idx, issue in enumerate(issues):
         elif completed > 0:
             st.markdown(f'<div style="font-size:0.85rem; color:#555;">⏳ {completed}/{len(steps)} steps completed</div>', unsafe_allow_html=True)
 
-st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown('<div id="docs"></div>', unsafe_allow_html=True)
 
 # ── FOOTER ──
 st.markdown("""
