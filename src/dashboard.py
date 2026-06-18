@@ -564,34 +564,64 @@ def render_developer_features(issues):
 
 def render_security_features(issues):
     st.markdown('<div class="section-title">Security Team Controls</div>', unsafe_allow_html=True)
+
+    # Initialize triage state
+    if "triage_data" not in st.session_state:
+        st.session_state.triage_data = [
+            {
+                "Issue": i.get("issue"),
+                "File": i.get("file"),
+                "Severity": i.get("severity"),
+                "Assigned To": "Unassigned",
+                "Status": "Open"
+            }
+            for i in issues
+        ]
+
     st.markdown('<div class="glass">', unsafe_allow_html=True)
 
-    triage_df = pd.DataFrame([
-        {
-            "Issue": i.get("issue"),
-            "File": i.get("file"),
-            "Severity": i.get("severity"),
-            "Assigned To": "Unassigned",
-            "Status": "Open"
-        }
-        for i in issues
-    ])
+    # Show live triage table
+    triage_df = pd.DataFrame(st.session_state.triage_data)
     st.dataframe(triage_df, use_container_width=True)
 
-    selected = st.selectbox(
+    selected_label = st.selectbox(
         "Select issue for triage",
         options=[f"{i.get('issue')} — {i.get('file')}" for i in issues]
     )
+
+    # Find index of selected issue
+    selected_idx = next(
+        (idx for idx, i in enumerate(issues)
+         if f"{i.get('issue')} — {i.get('file')}" == selected_label),
+        0
+    )
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.selectbox("Override severity", ["HIGH", "MEDIUM", "LOW"], key="override_severity")
+        new_severity = st.selectbox(
+            "Override severity",
+            ["HIGH", "MEDIUM", "LOW"],
+            key="override_severity"
+        )
     with col2:
-        st.selectbox("Assign reviewer", ["Unassigned", "Security Lead", "AppSec Analyst"], key="assign_reviewer")
+        new_assignee = st.selectbox(
+            "Assign reviewer",
+            ["Unassigned", "Security Lead", "AppSec Analyst"],
+            key="assign_reviewer"
+        )
     with col3:
-        st.selectbox("Mark status", ["Open", "In Review", "False Positive", "Resolved"], key="mark_status")
+        new_status = st.selectbox(
+            "Mark status",
+            ["Open", "In Review", "False Positive", "Resolved"],
+            key="mark_status"
+        )
 
     if st.button("Save triage update"):
-        st.success("✅ Triage update saved successfully!")
+        st.session_state.triage_data[selected_idx]["Severity"] = new_severity
+        st.session_state.triage_data[selected_idx]["Assigned To"] = new_assignee
+        st.session_state.triage_data[selected_idx]["Status"] = new_status
+        st.success("✅ Triage updated!")
+        st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
