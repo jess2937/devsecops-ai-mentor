@@ -290,7 +290,41 @@ st.markdown("""
         font-weight: 700;
         display: inline-block;
     }
+    /* Green toggles */
+    .stToggle > div > div {
+        background-color: #00ff41 !important;
+    }
 
+    .stToggle [data-checked="true"] > div {
+        background-color: #00ff41 !important;
+    }
+
+    div[data-testid="stToggle"] label div {
+        background-color: #00ff41 !important;
+    }
+
+    /* Status styles */
+    .status-blocked {
+        background: linear-gradient(90deg, rgba(255,40,40,0.15), transparent);
+        border-left: 3px solid #ff2828;
+        border-radius: 0 8px 8px 0;
+        padding: 1rem 1.5rem;
+        color: #ff6b6b;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+    }
+
+    .status-passed {
+        background: linear-gradient(90deg, rgba(0,255,65,0.1), transparent);
+        border-left: 3px solid #00ff41;
+        border-radius: 0 8px 8px 0;
+        padding: 1rem 1.5rem;
+        color: #00ff41;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+    }
     #MainMenu, header, footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -580,14 +614,17 @@ def show_app():
         unsafe_allow_html=True
     )
 
-    st.markdown('<div class="hero">', unsafe_allow_html=True)
-    st.markdown("## Shift Security Left")
-    st.write("Scan code, review issues, teach remediation, and manage security operations from a single dashboard.")
-    if high > 0:
-        st.error(f"Pipeline blocked: {high} high-severity issue(s) found.")
-    else:
-        st.success("Pipeline passed: no high-severity issues detected.")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="hero">
+        <div style="font-family:'Space Grotesk',sans-serif; font-size:3.5rem; font-weight:800; color:#ffffff; letter-spacing:-2px; line-height:1.1; margin-bottom:0.5rem;">
+            Shift Security <span style="color:#00ff41;">Left.</span>
+        </div>
+        <div style="color:#666; font-size:1rem; margin-bottom:1.2rem;">
+            Scan code, review issues, teach remediation, and manage security operations from a single dashboard.
+        </div>
+        {'<div class="status-blocked">🚫 Pipeline blocked — ' + str(high) + ' high-severity issue(s) found. Fix these and you\'re good to go!</div>' if high > 0 else '<div class="status-passed">✅ Pipeline passed — excellent work! No high-severity issues detected.</div>'}
+    </div>
+    """, unsafe_allow_html=True)
 
     render_developer_features(issues)
 
