@@ -325,9 +325,14 @@ st.markdown("""
         font-size: 0.95rem;
         margin-top: 0.5rem;
     }
-    #MainMenu, header, footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden; height: 0 !important; min-height: 0 !important;}
+    footer {visibility: hidden;}
+    [data-testid="stHeader"] {display: none !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    .stAppHeader {display: none !important;}
+    section[data-testid="stSidebarContent"] ~ div > div:first-child {display: none !important;}</style>
+    """, unsafe_allow_html=True)
 
 # =========================
 # AUTH SCREENS
