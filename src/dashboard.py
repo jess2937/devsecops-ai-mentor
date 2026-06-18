@@ -340,6 +340,12 @@ st.markdown("""
 def show_signup():
     left, center, right = st.columns([1.2, 1, 1.2])
 
+    st.markdown("""
+    <div style="text-align:center; padding: 0.5rem 0; font-family:'Space Grotesk',sans-serif; font-size:0.75rem; color:#1a3d1a; letter-spacing:3px; text-transform:uppercase;">
+        🛡️ Secure DevSecOps Intelligence Platform
+    </div>
+    """, unsafe_allow_html=True)
+
     with center:
         st.markdown('<div class="auth-card">', unsafe_allow_html=True)
         st.markdown('<div class="brand">🛡️ VexilGuard</div>', unsafe_allow_html=True)
@@ -377,6 +383,12 @@ def show_signup():
 
 def show_signin():
     left, center, right = st.columns([1.2, 1, 1.2])
+
+    st.markdown("""
+    <div style="text-align:center; padding: 0.5rem 0; font-family:'Space Grotesk',sans-serif; font-size:0.75rem; color:#1a3d1a; letter-spacing:3px; text-transform:uppercase;">
+        🛡️ Secure DevSecOps Intelligence Platform
+    </div>
+    """, unsafe_allow_html=True)
 
     with center:
         st.markdown('<div class="auth-card">', unsafe_allow_html=True)
